@@ -31,6 +31,17 @@
 #include "boinc/boinc_api.h"
 #include "boinc/filesys.h"
 
+FILE *fp;
+int outCount = 0;
+time_t start;
+int64_t total;
+std::vector<std::string> arr;
+time_t elapsed_chkpoint = 0;
+
+struct checkpoint_vars {
+    unsigned long long offset;
+    time_t elapsed_chkpoint;
+};
 
 void setInitialRng(Data* data) {
     int64_t worldSeed = data->seed;
@@ -119,14 +130,11 @@ Position getCenterPos(BoundingBox box) {
     return ret;
 }
 
-
-FILE *fp;
-int outCount = 0;
 void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* data, int* cache, BoundingBox* boxCache, int desiredX, int desiredZ)
 {
     static const char* isStrongholdBiome = getValidStrongholdBiomes();
 
-        int64_t copy = *worldSeed;
+    int64_t copy = *worldSeed;
     applySeed(g, *worldSeed);
 
     Layer *l = &g->layers[L_RIVER_MIX_4];
@@ -135,7 +143,6 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
     long double angle = nextDouble(worldSeed) * PI * 2.0;
     int var6 = 1;
 
-    //SH here determines how many strongholds to generate
     for (int var7 = 0; var7 < SH; ++var7)
     {
         long double distance = (1.25 * (double)var6 + nextDouble(worldSeed)) * 32.0 * (double)var6;
@@ -186,47 +193,31 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
                     outCount++;
                 }
             }
-
-            /*if((lastPiece.box.start.x >> 4 == desiredX && lastPiece.box.start.z >> 4 == desiredZ) || (lastPiece.box.end.x >> 4 == desiredX && lastPiece.box.end.z >> 4 == desiredZ)) {
-                Position center = getCenterPos(lastPiece.box);
-                printf("%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
-            }
-            /*std::cout << "Portal room for Stronghold " << var7 << " is at " << center.x << " " << center.z << ", and there are " << data->pieceCnt << " pieces that were generated before the portal room itself.\n\n" << std::endl;*/
         }
         angle += 2 * PI / 3.0;
     }
-    }
+}
 
 void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadData, BoundingBox* boxCache) {
     getStrongholdPositions(&g, &seed, 3, threadData, cache, boxCache, x, z); 
 }
 
-time_t start;
-int64_t total;
-std::vector<std::string> arr;
-time_t elapsed_chkpoint = 0;
-struct checkpoint_vars {
-    unsigned long long offset;
-    time_t elapsed_chkpoint;
-};
-
-// Main code begins below
 int main(int argc, char **argv) {
     fp = fopen("out.txt", "w+");
     char* filename = "ocinput.txt";
     initBiomes();
 
-        int64_t checkpointOffset = 0;
+    int64_t checkpointOffset = 0;
     std::vector<std::thread> threads;
 
-        #ifdef BOINC
-            BOINC_OPTIONS options;
-            boinc_options_defaults(options);
-            options.normal_thread_priority = true;
-            boinc_init_options(&options);
-        #endif
+    #ifdef BOINC
+        BOINC_OPTIONS options;
+        boinc_options_defaults(options);
+        options.normal_thread_priority = true;
+        boinc_init_options(&options);
+    #endif
 
-FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
+    FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     if(!checkpoint_data){
         fprintf(stderr, "No checkpoint to load\n");
     } else {
@@ -285,20 +276,20 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
         std::istringstream iss(line);
         if(!(iss >> structureSeed >> ChunkX >> ChunkZ)){break;}
 
-    for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
-        int64_t worldSeed = (upperBits << 48) | structureSeed;
-        applySeed(&g, worldSeed);
-        doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
-            }
+        for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
+            int64_t worldSeed = (upperBits << 48) | structureSeed;
+            applySeed(&g, worldSeed);
+            doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
+        }
 
         if(i % 5 || boinc_time_to_checkpoint()){
             #ifdef BOINC
-        boinc_begin_critical_section(); // Boinc should not interrupt this
+                boinc_begin_critical_section(); // Boinc should not interrupt this
             #endif
-        // Checkpointing section below
-        boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
+            // Checkpointing section below
+            boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
 
-    FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
+            FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
             struct checkpoint_vars data_store;
             data_store.offset = i;
             data_store.elapsed_chkpoint = elapsed_chkpoint + elapsed;
@@ -314,6 +305,7 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     #ifdef BOINC
         boinc_begin_critical_section();
     #endif
+    
     time_t elapsed = (time(NULL) - start) + elapsed_chkpoint;
     double done = (double) total;
     double speed = (done / (double) elapsed) * 65535;
@@ -329,6 +321,4 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
         boinc_end_critical_section();
     #endif
     boinc_finish(0);
-
 }
-

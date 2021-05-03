@@ -13,15 +13,13 @@ public:
       setSeed(seed);
     }
 
-  inline void setSeed(int64_t seed) {
-    this->seed = (uint64_t)((uint64_t)seed ^ 0x5deece66du) & ((1LLu << 48) - 1);
-  }
+    inline void setSeed(int64_t seed) {
+        this->seed = (uint64_t)((uint64_t)seed ^ 0x5deece66du) & ((1LLu << 48) - 1);
+    }
 
     inline int nextInt(int n)
     {
-        //if (n <= 0) throw new ArgumentException("n must be positive");
-
-        if ((n & -n) == n)  // i.e., n is a power of 2
+        if ((n & -n) == n)
             return (int)((n * (int64_t)Next(31)) >> 31u);
 
         long bits, val;

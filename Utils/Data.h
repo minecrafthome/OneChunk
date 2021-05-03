@@ -9,19 +9,19 @@
 
 #define PIECE_START 0
 
-#define STAIRS2_PIECE          0
+#define STAIRS2_PIECE           0
 #define CROSSING_PIECE          1
 #define LEFTTURN_PIECE          2
 #define STRAIGHT_PIECE          3
-#define STAIRSSTRAIGHT_PIECE 4
-#define STAIRS_PIECE         5
-#define CORRIDOR_PIECE       6
-#define PRISON_PIECE         7
-#define RIGHTTURN_PIECE      8
+#define STAIRSSTRAIGHT_PIECE    4
+#define STAIRS_PIECE            5
+#define CORRIDOR_PIECE          6
+#define PRISON_PIECE            7
+#define RIGHTTURN_PIECE         8
 #define ROOMCROSSING_PIECE      9
-#define CHESTCORRIDOR_PIECE 10
-#define LIBRARY_PIECE         11
-#define PORTALROOM_PIECE     12
+#define CHESTCORRIDOR_PIECE    10
+#define LIBRARY_PIECE          11
+#define PORTALROOM_PIECE       12
 
 class PieceInfo {
 public:
@@ -62,7 +62,6 @@ public:
     
     PieceInfo pieces[1000];
     std::vector<PieceInfo> pieces_pending;
-    //PieceInfo pieces_pending[1000];
     PieceWeight weights[11];
     
     bool portalFound = false;
@@ -94,7 +93,7 @@ public:
     
     void addPiece(int componentType, int coordBaseMode, int BFSlayer, BoundingBox box) {
         if(this->portalFound) return;
-        //std::cout << "spawned. " << componentType << std::endl;
+        
         setPiece(pieceCnt++, componentType, coordBaseMode, BFSlayer, box);
     }
     
@@ -114,7 +113,6 @@ public:
         pieceInfo.field4 = field4;
         
         pieces_pending.push_back(pieceInfo);
-        //setPiecePending(pendingCnt++, componentType, coordBaseMode, BFSlayer, box);
     }
     
     void setPiece(int pieceID, int componentType, int coordBaseMode, int BFSlayer, BoundingBox box) {
@@ -122,10 +120,6 @@ public:
         pieces[pieceID].coordBaseMode = coordBaseMode;
         pieces[pieceID].BFSlayer = BFSlayer;
         pieces[pieceID].box = box;
-    }
-    
-    void setPiecePending(int pieceID, int componentType, int coordBaseMode, int BFSlayer, BoundingBox box) {
-        
     }
     
     void addBox(BoundingBox box) {
