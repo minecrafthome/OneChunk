@@ -31,11 +31,10 @@
 #include "boinc/boinc_api.h"
 #include "boinc/filesys.h"
 
-    void setFirstPiece(Data* data) {
-	data->reset();
+
+void setInitialRng(Data* data) {
 
 	int64_t worldSeed = data->seed;
-	//The chunk where the base pos of the stronghold is at
 	int chunkX = data->StartChunkX;
 	int chunkZ = data->StartChunkZ;
 
@@ -48,8 +47,11 @@
 	int64_t internalSeed = var13 ^ var15 ^ worldSeed;
 
 	data->rng->setSeed(internalSeed);
+	
+	data->rng->Next(32);
+}
 
-	data->rng->Next(32); //Minecraft and its spaghetti. USELESS RNG CALL. SERIOUSLY?
+void setFirstPiece(Data* data) {	
 
 	Stairs2::GeneratePiece(data);
 	data->priorityComponentType = 1;
@@ -57,7 +59,7 @@
 	data->priorityComponentType = 0;
 }
 
-    void BuildComponent(Data* data, PieceInfo pieceInfo) {
+void BuildComponent(Data* data, PieceInfo pieceInfo) {
 	int componentType = pieceInfo.componentType;
 
 	if(componentType == CROSSING_PIECE) Crossing::BuildComponent(data, pieceInfo);
@@ -70,20 +72,17 @@
 	else if(componentType == RIGHTTURN_PIECE) LeftTurn::BuildComponent(data, pieceInfo);
 	else if(componentType == CHESTCORRIDOR_PIECE) ChestCorridor::BuildComponent(data, pieceInfo);
 	else if(componentType == CORRIDOR_PIECE || componentType == LIBRARY_PIECE) {}
-	else //Unknown piece?!? WTF?
+	else
 		std::cout << "COULD NOT BUILD COMPONENT TYPE " << componentType << std::endl;
 }
 
-    PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
-	threadData->seed = seed;
-	threadData->StartChunkX = startChunkX;
-	threadData->StartChunkZ = startChunkZ;
 
+void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
+	threadData->reset();	
 	setFirstPiece(threadData);
 
 	while(threadData->pieces_pending.size() != 0) {
 		int randomPieceNumber = threadData->rng->nextInt(threadData->pieces_pending.size());
-
 		PieceInfo pieceChosen = threadData->pieces_pending.at(randomPieceNumber);
 		threadData->pieces_pending.erase(threadData->pieces_pending.begin() + randomPieceNumber);
 
@@ -93,16 +92,35 @@
 			break;
 	}
 
+	
 	PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
-	return lastPiece;
-    }
+	if(lastPiece.componentType != PORTALROOM_PIECE) {
+		BoundingBox structureBox = BoundingBox::getNewBoundingBox();
+		for(int i = 0; i < threadData->pieceCnt; i++) {
+			structureBox.expandTo(threadData->pieces[i].box);
+		}
+		
+		int ySize = structureBox.getYSize() + 1;
+		if(ySize < 53)
+			threadData->rng->nextInt(53 - ySize);
+		
+		generateAllPieces(threadData, seed, startChunkX, startChunkZ);
+	}
+}
 
-    Position getCenterPos(BoundingBox box) {
+PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
+	generateAllPieces(threadData, seed, startChunkX, startChunkZ);
+	
+	return threadData->pieces[threadData->pieceCnt - 1];
+}
+
+Position getCenterPos(BoundingBox box) {
 	Position ret;
 	ret.x = (box.end.x + box.start.x) / 2;
 	ret.z = (box.end.z + box.start.z) / 2;
 	return ret;
-    }
+}
+
 
 FILE *fp;
 int outCount = 0;
@@ -303,9 +321,9 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     double done = (double) total;
     double speed = (done / (double) elapsed) * 65535;
 
-    fprintf(stderr, "\nSpeed: %.2lf worldseeds/s\n", speed );
+    fprintf(stderr, "\nSpeed: %.2lf world seeds/s\n", speed );
     fprintf(stderr, "Done.\n");
-    fprintf(stderr, "Filtered: %llu worldseeds in %.2lfs seconds.\n", total*65535, (double) elapsed );
+    fprintf(stderr, "Processed %llu world seeds in %.2lfs seconds.\n", total*65535, (double) elapsed );
     fprintf(stderr, "Have %llu output seeds.\n", outCount );
     fflush(stderr);
     fclose(fp);
