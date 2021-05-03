@@ -57,11 +57,11 @@ void setInitialRng(Data* data) {
     int64_t internalSeed = var13 ^ var15 ^ worldSeed;
 
     data->rng->setSeed(internalSeed);
-    
+
     data->rng->Next(32);
 }
 
-void setFirstPiece(Data* data) {    
+void setFirstPiece(Data* data) {
     Stairs2::GeneratePiece(data);
     data->priorityComponentType = 1;
     Stairs2::BuildComponent(data);
@@ -85,9 +85,8 @@ void BuildComponent(Data* data, PieceInfo pieceInfo) {
         std::cout << "COULD NOT BUILD COMPONENT TYPE " << componentType << std::endl;
 }
 
-
 void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
-    threadData->reset();    
+    threadData->reset();
     setFirstPiece(threadData);
 
     while(threadData->pieces_pending.size() != 0) {
@@ -101,25 +100,24 @@ void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int star
             break;
     }
 
-    
     PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
     if(lastPiece.componentType != PORTALROOM_PIECE) {
         BoundingBox structureBox = BoundingBox::getNewBoundingBox();
         for(int i = 0; i < threadData->pieceCnt; i++) {
             structureBox.expandTo(threadData->pieces[i].box);
         }
-        
+
         int ySize = structureBox.getYSize() + 1;
         if(ySize < 53)
             threadData->rng->nextInt(53 - ySize);
-        
+
         generateAllPieces(threadData, seed, startChunkX, startChunkZ);
     }
 }
 
 PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
     generateAllPieces(threadData, seed, startChunkX, startChunkZ);
-    
+
     return threadData->pieces[threadData->pieceCnt - 1];
 }
 
@@ -158,7 +156,7 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
         data->StartChunkX = x;
         data->StartChunkZ = z;
         setInitialRng(data);
-        
+
         PieceInfo lastPiece = getLastPiece(data, copy, x, z);
         if(lastPiece.componentType == PORTALROOM_PIECE) {
             int pos1X, pos1Z, pos2X, pos2Z;
@@ -195,6 +193,7 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
                 if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
                     Position center = getCenterPos(lastPiece.box);
                     fprintf(fp, "%lld %d %d\n", copy, center.x, center.z);
+                    fflush(fp);
                     outCount++;
                 }
             }
@@ -204,12 +203,12 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
 }
 
 void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadData, BoundingBox* boxCache) {
-    getStrongholdPositions(&g, &seed, 3, threadData, cache, boxCache, x, z); 
+    getStrongholdPositions(&g, &seed, 3, threadData, cache, boxCache, x, z);
 }
 
 int main(int argc, char **argv) {
     fp = fopen("out.txt", "w+");
-    char* filename = "ocinput.txt";
+    char* filename = "ocinput.txt"; //Input seeds and pos go here
     initBiomes();
 
     int64_t checkpointOffset = 0;
@@ -299,6 +298,7 @@ int main(int argc, char **argv) {
             data_store.offset = i;
             data_store.elapsed_chkpoint = elapsed_chkpoint + elapsed;
             fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
+            fflush(checkpoint_data);
             fclose(checkpoint_data);
             #ifdef BOINC
                 boinc_end_critical_section();
@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
     #ifdef BOINC
         boinc_begin_critical_section();
     #endif
-    
+
     time_t elapsed = (time(NULL) - start) + elapsed_chkpoint;
     double done = (double) total;
     double speed = (done / (double) elapsed) * 65535;
@@ -320,6 +320,7 @@ int main(int argc, char **argv) {
     fprintf(stderr, "Processed %llu world seeds in %.2lfs seconds.\n", total*65535, (double) elapsed );
     fprintf(stderr, "Have %llu output seeds.\n", outCount );
     fflush(stderr);
+    fflush(fp);
     fclose(fp);
     boinc_delete_file("filter9000-checkpoint.txt");
     #ifdef BOINC
