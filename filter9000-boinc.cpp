@@ -31,7 +31,7 @@
 #include "boinc/boinc_api.h"
 #include "boinc/filesys.h"
 
-void setFirstPiece(Data* data) {
+    void setFirstPiece(Data* data) {
 	data->reset();
 
 	int64_t worldSeed = data->seed;
@@ -57,7 +57,7 @@ void setFirstPiece(Data* data) {
 	data->priorityComponentType = 0;
 }
 
-void BuildComponent(Data* data, PieceInfo pieceInfo) {
+    void BuildComponent(Data* data, PieceInfo pieceInfo) {
 	int componentType = pieceInfo.componentType;
 
 	if(componentType == CROSSING_PIECE) Crossing::BuildComponent(data, pieceInfo);
@@ -74,7 +74,7 @@ void BuildComponent(Data* data, PieceInfo pieceInfo) {
 		std::cout << "COULD NOT BUILD COMPONENT TYPE " << componentType << std::endl;
 }
 
-PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
+    PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
 	threadData->seed = seed;
 	threadData->StartChunkX = startChunkX;
 	threadData->StartChunkZ = startChunkZ;
@@ -92,24 +92,25 @@ PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int star
 		if(threadData->portalFound)
 			break;
 	}
+
 	PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
 	return lastPiece;
-}
+    }
 
-Position getCenterPos(BoundingBox box) {
+    Position getCenterPos(BoundingBox box) {
 	Position ret;
 	ret.x = (box.end.x + box.start.x) / 2;
 	ret.z = (box.end.z + box.start.z) / 2;
 	return ret;
-}
+    }
+
 FILE *fp;
 int outCount = 0;
 void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* data, int* cache, BoundingBox* boxCache, int desiredX, int desiredZ)
 {
 	static const char* isStrongholdBiome = getValidStrongholdBiomes();
 
-	int64_t copy = *worldSeed;
-
+        int64_t copy = *worldSeed;
 	applySeed(g, *worldSeed);
 
 	Layer *l = &g->layers[L_RIVER_MIX_4];
@@ -178,43 +179,42 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
 		}
 		angle += 2 * PI / 3.0;
 	}
-}
-
+    }
 
 void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadData, BoundingBox* boxCache) {
-	getStrongholdPositions(&g, &seed, 3, threadData, cache, boxCache, x, z);
-}
+         getStrongholdPositions(&g, &seed, 3, threadData, cache, boxCache, x, z); 
+    }
 
-time_t start;
-int64_t total;
-std::vector<std::string> arr;
-time_t elapsed_chkpoint = 0;
+    time_t start;
+    int64_t total;
+    std::vector<std::string> arr;
+    time_t elapsed_chkpoint = 0;
 
-struct checkpoint_vars {
-    unsigned long long offset;
-    time_t elapsed_chkpoint;
-};
+    struct checkpoint_vars {
+        unsigned long long offset;
+        time_t elapsed_chkpoint;
+    };
 
+// Main code begins below
 int main(int argc, char **argv) {
 	fp = fopen("out.txt", "w+");
 	char* filename = "ocinput.txt";
 	initBiomes();
 
-    int64_t checkpointOffset = 0;
+        int64_t checkpointOffset = 0;
 	std::vector<std::thread> threads;
 
-    #ifdef BOINC
-        BOINC_OPTIONS options;
-        boinc_options_defaults(options);
-        options.normal_thread_priority = true;
-        boinc_init_options(&options);
-    #endif
+        #ifdef BOINC
+            BOINC_OPTIONS options;
+            boinc_options_defaults(options);
+            options.normal_thread_priority = true;
+            boinc_init_options(&options);
+        #endif
 
 FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     if(!checkpoint_data){
         fprintf(stderr, "No checkpoint to load\n");
-    }
-    else{
+    } else {
         #ifdef BOINC
             boinc_begin_critical_section();
         #endif
@@ -253,7 +253,6 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     total = arr.size();
     start = time(NULL);
 
-
     int64_t structureSeed;
     int ChunkX;
     int ChunkZ;
@@ -271,22 +270,22 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
         std::istringstream iss(line);
         if(!(iss >> structureSeed >> ChunkX >> ChunkZ)){break;}
 
-		for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
-			int64_t worldSeed = (upperBits << 48) | structureSeed;
-			applySeed(&g, worldSeed);
-			doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
-			}
+	for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
+		int64_t worldSeed = (upperBits << 48) | structureSeed;
+		applySeed(&g, worldSeed);
+		doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
+            }
 
-        if(i % 10 || boinc_time_to_checkpoint()){
+        if(i % 5 || boinc_time_to_checkpoint()){
             #ifdef BOINC
 		boinc_begin_critical_section(); // Boinc should not interrupt this
             #endif
-            // Checkpointing section below
+        // Checkpointing section below
 		boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
 
 	FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
-	    struct checkpoint_vars data_store;
-	    data_store.offset = i;
+            struct checkpoint_vars data_store;
+            data_store.offset = i;
             data_store.elapsed_chkpoint = elapsed_chkpoint + elapsed;
             fwrite(&data_store, sizeof(data_store), 1, checkpoint_data);
             fclose(checkpoint_data);
@@ -301,12 +300,13 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
         boinc_begin_critical_section();
     #endif
     time_t elapsed = (time(NULL) - start) + elapsed_chkpoint;
-    double done = (double)total;
+    double done = (double) total;
     double speed = (done / (double) elapsed) * 65535;
+
     fprintf(stderr, "\nSpeed: %.2lf worldseeds/s\n", speed );
     fprintf(stderr, "Done.\n");
-    fprintf(stderr, "Processed: %llu input seeds in %.2lfs seconds.\n", total, (double) elapsed_chkpoint + (double) elapsed );
-    fprintf(stderr, "Have %llu output seeds.\n", outCount);
+    fprintf(stderr, "Filtered: %llu worldseeds in %.2lfs seconds.\n", total*65535, (double) elapsed );
+    fprintf(stderr, "Have %llu output seeds.\n", outCount );
     fflush(stderr);
     fclose(fp);
     boinc_delete_file("filter9000-checkpoint.txt");
@@ -315,5 +315,5 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     #endif
     boinc_finish(0);
 
-    time_t end = time(NULL);
 }
+
