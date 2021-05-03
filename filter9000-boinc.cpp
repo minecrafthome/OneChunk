@@ -154,6 +154,11 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
         x = biomePos.x >> 4;
         z = biomePos.z >> 4;
 
+        data->seed = copy;
+        data->StartChunkX = x;
+        data->StartChunkZ = z;
+        setInitialRng(data);
+        
         PieceInfo lastPiece = getLastPiece(data, copy, x, z);
         if(lastPiece.componentType == PORTALROOM_PIECE) {
             int pos1X, pos1Z, pos2X, pos2Z;
