@@ -33,90 +33,90 @@
 
 
 void setInitialRng(Data* data) {
-	int64_t worldSeed = data->seed;
-	int chunkX = data->StartChunkX;
-	int chunkZ = data->StartChunkZ;
+    int64_t worldSeed = data->seed;
+    int chunkX = data->StartChunkX;
+    int chunkZ = data->StartChunkZ;
 
-	data->rng->setSeed(worldSeed);
+    data->rng->setSeed(worldSeed);
 
-	int64_t var7 = data->rng->nextLong();
-	int64_t var9 = data->rng->nextLong();
-	int64_t var13 = (int64_t)chunkX * var7;
-	int64_t var15 = (int64_t)chunkZ * var9;
-	int64_t internalSeed = var13 ^ var15 ^ worldSeed;
+    int64_t var7 = data->rng->nextLong();
+    int64_t var9 = data->rng->nextLong();
+    int64_t var13 = (int64_t)chunkX * var7;
+    int64_t var15 = (int64_t)chunkZ * var9;
+    int64_t internalSeed = var13 ^ var15 ^ worldSeed;
 
-	data->rng->setSeed(internalSeed);
-	
-	data->rng->Next(32);
+    data->rng->setSeed(internalSeed);
+    
+    data->rng->Next(32);
 }
 
-void setFirstPiece(Data* data) {	
-	Stairs2::GeneratePiece(data);
-	data->priorityComponentType = 1;
-	Stairs2::BuildComponent(data);
-	data->priorityComponentType = 0;
+void setFirstPiece(Data* data) {    
+    Stairs2::GeneratePiece(data);
+    data->priorityComponentType = 1;
+    Stairs2::BuildComponent(data);
+    data->priorityComponentType = 0;
 }
 
 void BuildComponent(Data* data, PieceInfo pieceInfo) {
-	int componentType = pieceInfo.componentType;
+    int componentType = pieceInfo.componentType;
 
-	if(componentType == CROSSING_PIECE) Crossing::BuildComponent(data, pieceInfo);
-	else if(componentType == LEFTTURN_PIECE) LeftTurn::BuildComponent(data, pieceInfo);
-	else if(componentType == STRAIGHT_PIECE) Straight::BuildComponent(data, pieceInfo);
-	else if(componentType == STAIRSSTRAIGHT_PIECE) StairsStraight::BuildComponent(data, pieceInfo);
-	else if(componentType == ROOMCROSSING_PIECE) RoomCrossing::BuildComponent(data, pieceInfo);
-	else if(componentType == PRISON_PIECE) Prison::BuildComponent(data, pieceInfo);
-	else if(componentType == STAIRS_PIECE) Stairs::BuildComponent(data, pieceInfo);
-	else if(componentType == RIGHTTURN_PIECE) LeftTurn::BuildComponent(data, pieceInfo);
-	else if(componentType == CHESTCORRIDOR_PIECE) ChestCorridor::BuildComponent(data, pieceInfo);
-	else if(componentType == CORRIDOR_PIECE || componentType == LIBRARY_PIECE) {}
-	else
-		std::cout << "COULD NOT BUILD COMPONENT TYPE " << componentType << std::endl;
+    if(componentType == CROSSING_PIECE) Crossing::BuildComponent(data, pieceInfo);
+    else if(componentType == LEFTTURN_PIECE) LeftTurn::BuildComponent(data, pieceInfo);
+    else if(componentType == STRAIGHT_PIECE) Straight::BuildComponent(data, pieceInfo);
+    else if(componentType == STAIRSSTRAIGHT_PIECE) StairsStraight::BuildComponent(data, pieceInfo);
+    else if(componentType == ROOMCROSSING_PIECE) RoomCrossing::BuildComponent(data, pieceInfo);
+    else if(componentType == PRISON_PIECE) Prison::BuildComponent(data, pieceInfo);
+    else if(componentType == STAIRS_PIECE) Stairs::BuildComponent(data, pieceInfo);
+    else if(componentType == RIGHTTURN_PIECE) LeftTurn::BuildComponent(data, pieceInfo);
+    else if(componentType == CHESTCORRIDOR_PIECE) ChestCorridor::BuildComponent(data, pieceInfo);
+    else if(componentType == CORRIDOR_PIECE || componentType == LIBRARY_PIECE) {}
+    else
+        std::cout << "COULD NOT BUILD COMPONENT TYPE " << componentType << std::endl;
 }
 
 
 void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
-	threadData->reset();	
-	setFirstPiece(threadData);
+    threadData->reset();    
+    setFirstPiece(threadData);
 
-	while(threadData->pieces_pending.size() != 0) {
-		int randomPieceNumber = threadData->rng->nextInt(threadData->pieces_pending.size());
-		PieceInfo pieceChosen = threadData->pieces_pending.at(randomPieceNumber);
-		threadData->pieces_pending.erase(threadData->pieces_pending.begin() + randomPieceNumber);
+    while(threadData->pieces_pending.size() != 0) {
+        int randomPieceNumber = threadData->rng->nextInt(threadData->pieces_pending.size());
+        PieceInfo pieceChosen = threadData->pieces_pending.at(randomPieceNumber);
+        threadData->pieces_pending.erase(threadData->pieces_pending.begin() + randomPieceNumber);
 
-		BuildComponent(threadData, pieceChosen);
+        BuildComponent(threadData, pieceChosen);
 
-		if(threadData->portalFound)
-			break;
-	}
+        if(threadData->portalFound)
+            break;
+    }
 
-	
-	PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
-	if(lastPiece.componentType != PORTALROOM_PIECE) {
-		BoundingBox structureBox = BoundingBox::getNewBoundingBox();
-		for(int i = 0; i < threadData->pieceCnt; i++) {
-			structureBox.expandTo(threadData->pieces[i].box);
-		}
-		
-		int ySize = structureBox.getYSize() + 1;
-		if(ySize < 53)
-			threadData->rng->nextInt(53 - ySize);
-		
-		generateAllPieces(threadData, seed, startChunkX, startChunkZ);
-	}
+    
+    PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
+    if(lastPiece.componentType != PORTALROOM_PIECE) {
+        BoundingBox structureBox = BoundingBox::getNewBoundingBox();
+        for(int i = 0; i < threadData->pieceCnt; i++) {
+            structureBox.expandTo(threadData->pieces[i].box);
+        }
+        
+        int ySize = structureBox.getYSize() + 1;
+        if(ySize < 53)
+            threadData->rng->nextInt(53 - ySize);
+        
+        generateAllPieces(threadData, seed, startChunkX, startChunkZ);
+    }
 }
 
 PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
-	generateAllPieces(threadData, seed, startChunkX, startChunkZ);
-	
-	return threadData->pieces[threadData->pieceCnt - 1];
+    generateAllPieces(threadData, seed, startChunkX, startChunkZ);
+    
+    return threadData->pieces[threadData->pieceCnt - 1];
 }
 
 Position getCenterPos(BoundingBox box) {
-	Position ret;
-	ret.x = (box.end.x + box.start.x) / 2;
-	ret.z = (box.end.z + box.start.z) / 2;
-	return ret;
+    Position ret;
+    ret.x = (box.end.x + box.start.x) / 2;
+    ret.z = (box.end.z + box.start.z) / 2;
+    return ret;
 }
 
 
@@ -124,77 +124,77 @@ FILE *fp;
 int outCount = 0;
 void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* data, int* cache, BoundingBox* boxCache, int desiredX, int desiredZ)
 {
-	static const char* isStrongholdBiome = getValidStrongholdBiomes();
+    static const char* isStrongholdBiome = getValidStrongholdBiomes();
 
         int64_t copy = *worldSeed;
-	applySeed(g, *worldSeed);
+    applySeed(g, *worldSeed);
 
-	Layer *l = &g->layers[L_RIVER_MIX_4];
+    Layer *l = &g->layers[L_RIVER_MIX_4];
 
-	setSeed(worldSeed);
-	long double angle = nextDouble(worldSeed) * PI * 2.0;
-	int var6 = 1;
+    setSeed(worldSeed);
+    long double angle = nextDouble(worldSeed) * PI * 2.0;
+    int var6 = 1;
 
-	//SH here determines how many strongholds to generate
-	for (int var7 = 0; var7 < SH; ++var7)
-	{
-		long double distance = (1.25 * (double)var6 + nextDouble(worldSeed)) * 32.0 * (double)var6;
-		int x = (int)round(cos(angle) * distance);
-		int z = (int)round(sin(angle) * distance);
+    //SH here determines how many strongholds to generate
+    for (int var7 = 0; var7 < SH; ++var7)
+    {
+        long double distance = (1.25 * (double)var6 + nextDouble(worldSeed)) * 32.0 * (double)var6;
+        int x = (int)round(cos(angle) * distance);
+        int z = (int)round(sin(angle) * distance);
 
-		Pos biomePos = findBiomePosition(MC_1_7, l, cache, (x << 4) + 8, (z << 4) + 8, 112, isStrongholdBiome, worldSeed, NULL);
+        Pos biomePos = findBiomePosition(MC_1_7, l, cache, (x << 4) + 8, (z << 4) + 8, 112, isStrongholdBiome, worldSeed, NULL);
 
-		x = biomePos.x >> 4;
-		z = biomePos.z >> 4;
+        x = biomePos.x >> 4;
+        z = biomePos.z >> 4;
 
-		PieceInfo lastPiece = getLastPiece(data, copy, x, z);
-		if(lastPiece.componentType == PORTALROOM_PIECE) {
-			int pos1X, pos1Z, pos2X, pos2Z;
+        PieceInfo lastPiece = getLastPiece(data, copy, x, z);
+        if(lastPiece.componentType == PORTALROOM_PIECE) {
+            int pos1X, pos1Z, pos2X, pos2Z;
 
-			if(lastPiece.coordBaseMode == 0) {
-				pos1X = lastPiece.box.start.x + 3;
-				pos1Z = lastPiece.box.start.z + 12;
-				pos2X = lastPiece.box.start.x + 7;
-				pos2Z = lastPiece.box.start.z + 8;
-			}
+            if(lastPiece.coordBaseMode == 0) {
+                pos1X = lastPiece.box.start.x + 3;
+                pos1Z = lastPiece.box.start.z + 12;
+                pos2X = lastPiece.box.start.x + 7;
+                pos2Z = lastPiece.box.start.z + 8;
+            }
 
-			else if(lastPiece.coordBaseMode == 1) {
-				pos1X = lastPiece.box.start.x + 7;
-				pos1Z = lastPiece.box.start.z + 7;
-				pos2X = lastPiece.box.start.x + 3;
-				pos2Z = lastPiece.box.start.z + 3;
-			}
+            else if(lastPiece.coordBaseMode == 1) {
+                pos1X = lastPiece.box.start.x + 7;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 3;
+                pos2Z = lastPiece.box.start.z + 3;
+            }
 
-			else if(lastPiece.coordBaseMode == 2) {
-				pos1X = lastPiece.box.start.x + 3;
-				pos1Z = lastPiece.box.start.z + 7;
-				pos2X = lastPiece.box.start.x + 7;
-				pos2Z = lastPiece.box.start.z + 3;
-			}
+            else if(lastPiece.coordBaseMode == 2) {
+                pos1X = lastPiece.box.start.x + 3;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 7;
+                pos2Z = lastPiece.box.start.z + 3;
+            }
 
-			else if(lastPiece.coordBaseMode == 3) {
-				pos1X = lastPiece.box.start.x + 12;
-				pos1Z = lastPiece.box.start.z + 7;
-				pos2X = lastPiece.box.start.x + 8;
-				pos2Z = lastPiece.box.start.z + 3;
-			}
+            else if(lastPiece.coordBaseMode == 3) {
+                pos1X = lastPiece.box.start.x + 12;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 8;
+                pos2Z = lastPiece.box.start.z + 3;
+            }
 
-			if((pos1X - 8) >> 4 == desiredX && (pos2X - 8) >> 4 == desiredX) {
-				if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
-					Position center = getCenterPos(lastPiece.box);
-					fprintf(fp, "%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
-					outCount++;
-				}
-			}
+            if((pos1X - 8) >> 4 == desiredX && (pos2X - 8) >> 4 == desiredX) {
+                if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
+                    Position center = getCenterPos(lastPiece.box);
+                    fprintf(fp, "%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
+                    outCount++;
+                }
+            }
 
-			/*if((lastPiece.box.start.x >> 4 == desiredX && lastPiece.box.start.z >> 4 == desiredZ) || (lastPiece.box.end.x >> 4 == desiredX && lastPiece.box.end.z >> 4 == desiredZ)) {
-				Position center = getCenterPos(lastPiece.box);
-				printf("%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
-			}
-			/*std::cout << "Portal room for Stronghold " << var7 << " is at " << center.x << " " << center.z << ", and there are " << data->pieceCnt << " pieces that were generated before the portal room itself.\n\n" << std::endl;*/
-		}
-		angle += 2 * PI / 3.0;
-	}
+            /*if((lastPiece.box.start.x >> 4 == desiredX && lastPiece.box.start.z >> 4 == desiredZ) || (lastPiece.box.end.x >> 4 == desiredX && lastPiece.box.end.z >> 4 == desiredZ)) {
+                Position center = getCenterPos(lastPiece.box);
+                printf("%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
+            }
+            /*std::cout << "Portal room for Stronghold " << var7 << " is at " << center.x << " " << center.z << ", and there are " << data->pieceCnt << " pieces that were generated before the portal room itself.\n\n" << std::endl;*/
+        }
+        angle += 2 * PI / 3.0;
+    }
     }
 
 void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadData, BoundingBox* boxCache) {
@@ -213,12 +213,12 @@ void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadDa
 
 // Main code begins below
 int main(int argc, char **argv) {
-	fp = fopen("out.txt", "w+");
-	char* filename = "ocinput.txt";
-	initBiomes();
+    fp = fopen("out.txt", "w+");
+    char* filename = "ocinput.txt";
+    initBiomes();
 
         int64_t checkpointOffset = 0;
-	std::vector<std::thread> threads;
+    std::vector<std::thread> threads;
 
         #ifdef BOINC
             BOINC_OPTIONS options;
@@ -248,12 +248,12 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     }
 
     #ifdef BOINC
-	APP_INIT_DATA aid;
-	boinc_get_init_data(aid);
+    APP_INIT_DATA aid;
+    boinc_get_init_data(aid);
     #endif
 
-	std::string line;
-	std::ifstream infile(filename);
+    std::string line;
+    std::ifstream infile(filename);
 
     while(std::getline(infile, line)){
         int ChunkX = 0;
@@ -274,32 +274,32 @@ FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
     int ChunkZ;
 
     int* cache = (int*)malloc(sizeof(int) * 16 * 256 * 256);
-	Data* data = new Data();
-	BoundingBox* boxCache = (BoundingBox*)malloc(sizeof(BoundingBox));
+    Data* data = new Data();
+    BoundingBox* boxCache = (BoundingBox*)malloc(sizeof(BoundingBox));
 
-	LayerStack g;
-	setupGenerator(&g, MC_1_7);
+    LayerStack g;
+    setupGenerator(&g, MC_1_7);
 
     for(int i = 0+checkpointOffset; i < total; i++){
         time_t elapsed = time(NULL) - start;
-		std::string line = arr[i];
+        std::string line = arr[i];
         std::istringstream iss(line);
         if(!(iss >> structureSeed >> ChunkX >> ChunkZ)){break;}
 
-	for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
-		int64_t worldSeed = (upperBits << 48) | structureSeed;
-		applySeed(&g, worldSeed);
-		doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
+    for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
+        int64_t worldSeed = (upperBits << 48) | structureSeed;
+        applySeed(&g, worldSeed);
+        doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
             }
 
         if(i % 5 || boinc_time_to_checkpoint()){
             #ifdef BOINC
-		boinc_begin_critical_section(); // Boinc should not interrupt this
+        boinc_begin_critical_section(); // Boinc should not interrupt this
             #endif
         // Checkpointing section below
-		boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
+        boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
 
-	FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
+    FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
             struct checkpoint_vars data_store;
             data_store.offset = i;
             data_store.elapsed_chkpoint = elapsed_chkpoint + elapsed;
