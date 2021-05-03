@@ -194,7 +194,7 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
             if((pos1X - 8) >> 4 == desiredX && (pos2X - 8) >> 4 == desiredX) {
                 if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
                     Position center = getCenterPos(lastPiece.box);
-                    fprintf(fp, "%lld %d %d %d %d\n", copy, center.x >> 4, center.z >> 4, center.x, center.z);
+                    fprintf(fp, "%lld %d %d\n", copy, center.x, center.z);
                     outCount++;
                 }
             }
