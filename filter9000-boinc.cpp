@@ -152,6 +152,11 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
         x = biomePos.x >> 4;
         z = biomePos.z >> 4;
 
+        if(x < desiredX - 7 || x > desiredX + 7 || z < desiredZ - 7 || z > desiredZ + 7) {
+            angle += 2 * PI / 3.0;
+            continue;
+        }
+        
         data->seed = copy;
         data->StartChunkX = x;
         data->StartChunkZ = z;
