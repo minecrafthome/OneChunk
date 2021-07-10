@@ -9,7 +9,7 @@ class RoomCrossing : public StrongholdPiece {
 public:
     static BoundingBox GeneratePiece(Data* data, int x1, int y1, int z1, int coordBaseMode, int BFSlayer) {
         BoundingBox box = BoundingBox::getComponentToAddBoundingBox(x1, y1, z1, -4, -1, 0, 11, 7, 11, coordBaseMode);
-        if(box.start.x == -133769 || StrongholdPiece::findIntersecting(data, box).start.x != -133769) {
+        if(box.start.x == -133769 || !canStrongholdGoDeeper(box) || StrongholdPiece::findIntersecting(data, box).start.x != -133769) {
             box.start.y = -64;
         }
         else {

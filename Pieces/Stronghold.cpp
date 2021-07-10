@@ -37,6 +37,9 @@ bool getStrongholdComponentFromWeightedPiece(Data* data, int componentType, int 
 
 bool getNextComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int componentType, int BFSlayer)
 {
+    if(data->availableWeights == 0)
+        return false;
+    
     if (data->priorityComponentType != 0)
     {
         bool var8 = getStrongholdComponentFromWeightedPiece(data, data->priorityComponentType, x1, y1, z1, coordBaseMode, BFSlayer);
@@ -46,21 +49,28 @@ bool getNextComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int
     
     int var13 = 0;
 
+    bool prox = false;
     while (var13 < 5)
     {
         ++var13;
         int var9 = data->rng->nextInt(data->totalWeight);
+        
         for(int i = 0; i < 11; i++) {
             if(data->weights[i].ignore) continue;
+            
             var9 -= data->weights[i].pieceWeight;
+            
             if(var9 < 0) {
                 bool canSpawnPiece = data->weights[i].instancesLimit == 0 || data->weights[i].instancesSpawned < data->weights[i].instancesLimit;
                 if(data->weights[i].componentType == LIBRARY_PIECE && BFSlayer <= 4)
                     canSpawnPiece = false;
+                
                 else if(data->weights[i].componentType == PORTALROOM_PIECE && BFSlayer <= 5)
                     canSpawnPiece = false;
-                if(!canSpawnPiece || i == data->toIgnore)
+                
+                if(!canSpawnPiece || i == data->toIgnore) {
                     break;
+                }
                 
                 bool spawned = getStrongholdComponentFromWeightedPiece(data, data->weights[i].componentType, x1, y1, z1, coordBaseMode, BFSlayer);
                 
@@ -71,10 +81,12 @@ bool getNextComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int
                     if(data->weights[i].componentType == LIBRARY_PIECE && BFSlayer <= 4)
                         canSpawnPiece = false;
                     else if(data->weights[i].componentType == PORTALROOM_PIECE && BFSlayer <= 5)
-                    canSpawnPiece = false;
+                        canSpawnPiece = false;
+
                     if(!canSpawnPiece) {
                         data->totalWeight -= data->weights[i].pieceWeight;
                         data->weights[i].ignore = true;
+                        data->availableWeights--;
                     }
                 
                     data->toIgnore = i;
@@ -91,10 +103,8 @@ bool getNextComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int
     return false;
 }
 
-bool Stronghold::getNextValidComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int componentType, int BFSlayer) {
-    if(data->portalFound) return false;
-    
-    if (BFSlayer > 50)
+bool Stronghold::getNextValidComponent(Data* data, int x1, int y1, int z1, int coordBaseMode, int componentType, int BFSlayer) {    
+    if (BFSlayer > 50 || data->portalFound)
     {
         return false;
     }

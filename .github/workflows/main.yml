@@ -12,7 +12,7 @@ jobs:
     - uses: msys2/setup-msys2@v2
     - name: build
       run: |
-       g++ -O2 -m64 filter9000-boinc.cpp -o filter9000.exe ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/x86_64/win -lstdc++ -static -static-libstdc++ -D_WIN64 -DBOINC -DWIN64 -D_WIN32 -DWIN32 -lboinc_api -lboinc
+       g++ -O0 -m64 onechunk-boinc.cpp -o filter9000.exe -std=c++11 ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/x86_64/win -lstdc++ -static -static-libstdc++ -D_WIN64 -DBOINC -DWIN64 -D_WIN32 -DWIN32 -lboinc_api -lboinc
        dir
     - uses: actions/upload-artifact@v2
       with:
@@ -26,7 +26,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: build
       run: |
-        g++ -O2 -m64 filter9000-boinc.cpp -o filter9000 ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/x86_64/lin -lstdc++ -static -static-libstdc++ -DBOINC -lboinc_api -lboinc -pthread
+        g++ -O0 -m64 filter9000-boinc.cpp -o filter9000 ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/x86_64/lin -lstdc++ -static -static-libstdc++ -DBOINC -lboinc_api -lboinc -pthread
         ls -la
     - uses: actions/upload-artifact@v2
       with:

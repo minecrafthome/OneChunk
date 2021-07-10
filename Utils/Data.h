@@ -72,6 +72,10 @@ public:
     int toIgnore = -1;
     int toProcess = 0;
     
+    int availableWeights = 11;
+    int portalCoordBaseMode = 0;
+    BoundingBox* portalBox = NULL;
+    
     Data() {
         rng = new JavaRnd(0);
         pieces_pending.reserve(1000);
@@ -89,6 +93,7 @@ public:
         weights[ 8].setData(10,  5, 4); //chest_corridor
         weights[ 9].setData(11, 10, 2); //library
         weights[10].setData(12, 20, 1); //portalroom
+        availableWeights = 11;
     }
     
     void addPiece(int componentType, int coordBaseMode, int BFSlayer, BoundingBox box) {

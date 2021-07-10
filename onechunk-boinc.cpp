@@ -9,6 +9,8 @@
 #include <sstream>
 #include <stdlib.h>
 #include <thread>
+#include <cstdio>
+#include <unordered_map>
 
 #include "Utils/Data.h"
 #include "Utils/Random.h"
@@ -32,11 +34,12 @@
 #include "boinc/filesys.h"
 
 FILE *fp;
+FILE *binary;
 int outCount = 0;
 time_t start;
 int64_t total;
-std::vector<std::string> arr;
 time_t elapsed_chkpoint = 0;
+std::unordered_map<int, std::tuple<int, int>> goodStarts;
 
 struct checkpoint_vars {
     unsigned long long offset;
@@ -100,12 +103,10 @@ void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int star
             break;
     }
 
-    PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
-    if(lastPiece.componentType != PORTALROOM_PIECE) {
+    if(!threadData->portalFound) {
         BoundingBox structureBox = BoundingBox::getNewBoundingBox();
-        for(int i = 0; i < threadData->pieceCnt; i++) {
+        for(int i = 0; i < threadData->pieceCnt; i++)
             structureBox.expandTo(threadData->pieces[i].box);
-        }
 
         int ySize = structureBox.getYSize() + 1;
         if(ySize < 53)
@@ -113,19 +114,6 @@ void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int star
 
         generateAllPieces(threadData, seed, startChunkX, startChunkZ);
     }
-}
-
-PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
-    generateAllPieces(threadData, seed, startChunkX, startChunkZ);
-
-    return threadData->pieces[threadData->pieceCnt - 1];
-}
-
-Position getCenterPos(BoundingBox box) {
-    Position ret;
-    ret.x = (box.end.x + box.start.x) / 2;
-    ret.z = (box.end.z + box.start.z) / 2;
-    return ret;
 }
 
 void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* data, int* cache, BoundingBox* boxCache, int desiredX, int desiredZ)
@@ -157,53 +145,68 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
             continue;
         }
         
-        data->seed = copy;
-        data->StartChunkX = x;
-        data->StartChunkZ = z;
-        setInitialRng(data);
+        std::unordered_map<int, std::tuple<int, int>>::iterator it;
+        it = goodStarts.find(x * 1000 + z);
+        
+        if(it != goodStarts.end()) {
+            fprintf(fp, "%lld %d %d\n", copy, std::get<0>(it->second), std::get<1>(it->second));
+            fflush(fp);
+            outCount++;
+        }
+        return;
+    }
+}
 
-        PieceInfo lastPiece = getLastPiece(data, copy, x, z);
-        if(lastPiece.componentType == PORTALROOM_PIECE) {
-            int pos1X, pos1Z, pos2X, pos2Z;
+void generatePosCache(int64_t binarySeed, int16_t binaryX, int16_t binaryZ, Data* data) {
+    int pos1X, pos1Z, pos2X, pos2Z;
+    for(int offsetX = -7; offsetX <= 7; offsetX++) {
+        for(int offsetZ = -7; offsetZ <= 7; offsetZ++) {
+            data->seed = binarySeed;
+            data->StartChunkX = binaryX + offsetX;
+            data->StartChunkZ = binaryZ + offsetZ;
+            setInitialRng(data);
+            
+            generateAllPieces(data, data->seed, data->StartChunkX, data->StartChunkZ);
 
-            if(lastPiece.coordBaseMode == 0) {
-                pos1X = lastPiece.box.start.x + 3;
-                pos1Z = lastPiece.box.start.z + 12;
-                pos2X = lastPiece.box.start.x + 7;
-                pos2Z = lastPiece.box.start.z + 8;
+            if(data->portalCoordBaseMode == 0) {
+                pos1X = data->portalBox->start.x + 3;
+                pos1Z = data->portalBox->start.z + 12;
+                pos2X = data->portalBox->start.x + 7;
+                pos2Z = data->portalBox->start.z + 8;
             }
 
-            else if(lastPiece.coordBaseMode == 1) {
-                pos1X = lastPiece.box.start.x + 7;
-                pos1Z = lastPiece.box.start.z + 7;
-                pos2X = lastPiece.box.start.x + 3;
-                pos2Z = lastPiece.box.start.z + 3;
+            else if(data->portalCoordBaseMode == 1) {
+                pos1X = data->portalBox->start.x + 7;
+                pos1Z = data->portalBox->start.z + 7;
+                pos2X = data->portalBox->start.x + 3;
+                pos2Z = data->portalBox->start.z + 3;
             }
 
-            else if(lastPiece.coordBaseMode == 2) {
-                pos1X = lastPiece.box.start.x + 3;
-                pos1Z = lastPiece.box.start.z + 7;
-                pos2X = lastPiece.box.start.x + 7;
-                pos2Z = lastPiece.box.start.z + 3;
+            else if(data->portalCoordBaseMode == 2) {
+                pos1X = data->portalBox->start.x + 3;
+                pos1Z = data->portalBox->start.z + 7;
+                pos2X = data->portalBox->start.x + 7;
+                pos2Z = data->portalBox->start.z + 3;
             }
 
-            else if(lastPiece.coordBaseMode == 3) {
-                pos1X = lastPiece.box.start.x + 12;
-                pos1Z = lastPiece.box.start.z + 7;
-                pos2X = lastPiece.box.start.x + 8;
-                pos2Z = lastPiece.box.start.z + 3;
+            else {
+                pos1X = data->portalBox->start.x + 12;
+                pos1Z = data->portalBox->start.z + 7;
+                pos2X = data->portalBox->start.x + 8;
+                pos2Z = data->portalBox->start.z + 3;
             }
 
-            if((pos1X - 8) >> 4 == desiredX && (pos2X - 8) >> 4 == desiredX) {
-                if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
-                    Position center = getCenterPos(lastPiece.box);
-                    fprintf(fp, "%lld %d %d\n", copy, center.x, center.z);
-                    fflush(fp);
-                    outCount++;
+            if((pos1X - 8) >> 4 == binaryX && (pos2X - 8) >> 4 == binaryX) {
+                if((pos1Z - 8) >> 4 == binaryZ && (pos2Z - 8) >> 4 == binaryZ) {
+                    goodStarts.insert(
+                        std::pair<int, std::tuple<int,int>>(
+                            data->StartChunkX * 1000 + data->StartChunkZ,
+                            std::tuple<int,int>((pos2X + pos1X) / 2, (pos2Z + pos1Z) / 2)       
+                        )
+                    );
                 }
             }
         }
-        angle += 2 * PI / 3.0;
     }
 }
 
@@ -213,7 +216,16 @@ void doSeed(int64_t seed, int x, int z, LayerStack g, int* cache, Data* threadDa
 
 int main(int argc, char **argv) {
     fp = fopen("out.txt", "w+");
-    char* filename = "ocinput.txt"; //Input seeds and pos go here
+    char* filename = "jf_MD5"; //Input seeds and pos go here
+    for (int i = 1; i < argc; i += 2) {
+        const char *param = argv[i];
+        if (strcmp(param, "-f") == 0 || strcmp(param, "--file") == 0) {
+            filename = argv[i + 1];
+        }
+        else {
+            fprintf(stderr,"Unknown parameter: %s\n", param);
+        }
+    }
     initBiomes();
 
     int64_t checkpointOffset = 0;
@@ -226,7 +238,7 @@ int main(int argc, char **argv) {
         boinc_init_options(&options);
     #endif
 
-    FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "rb");
+    FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint", "rb");
     if(!checkpoint_data){
         fprintf(stderr, "No checkpoint to load\n");
     } else {
@@ -251,54 +263,57 @@ int main(int argc, char **argv) {
     boinc_get_init_data(aid);
     #endif
 
-    std::string line;
-    std::ifstream infile(filename);
-
-    while(std::getline(infile, line)){
-        int ChunkX = 0;
-        int ChunkZ = 0;
-        int64_t structureSeed = 0;
-        std::istringstream iss(line);
-        if(!(iss >> structureSeed >> ChunkX >> ChunkZ)){break;}
-        arr.push_back(line);
-    }
-
-    infile.close();
-
-    total = arr.size();
     start = time(NULL);
 
     int64_t structureSeed;
     int ChunkX;
     int ChunkZ;
-
+	int64_t total = 0;
     int* cache = (int*)malloc(sizeof(int) * 16 * 256 * 256);
     Data* data = new Data();
     BoundingBox* boxCache = (BoundingBox*)malloc(sizeof(BoundingBox));
 
     LayerStack g;
     setupGenerator(&g, MC_1_7);
-
+    binary = fopen(filename, "rb");
+    if(!binary){
+        fprintf(stderr, "ERROR: Could not load file %s for input.\n", filename);
+    }
+    fseek(binary, 0L, SEEK_END);
+    total = (int64_t)((double)ftell(binary) / 8.0);
+    fseek(binary, 0L, SEEK_SET);
+	int16_t binaryX;
+    int16_t binaryZ;
+    int64_t* binarySeedPtr;
+    int64_t binarySeed;
+    binarySeedPtr = (int64_t*)malloc(8);
+    fseek(binary, checkpointOffset*8, SEEK_SET);
     for(int i = 0+checkpointOffset; i < total; i++){
         time_t elapsed = time(NULL) - start;
-        std::string line = arr[i];
-        std::istringstream iss(line);
-        if(!(iss >> structureSeed >> ChunkX >> ChunkZ)){break;}
+        int result = 0;
+        result = fread(binarySeedPtr, 8, 1, binary);
+        binaryX = (uint8_t)(((*binarySeedPtr) >> 8) & 0x0FF) - 127;
+        binaryZ = (uint8_t)(((*binarySeedPtr)) & 0x0FF) - 127; 
+        binarySeed = (*binarySeedPtr >> 16) & 0x0FFFFFFFFFFFF;
 
-        for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
-            int64_t worldSeed = (upperBits << 48) | structureSeed;
-            applySeed(&g, worldSeed);
-            doSeed(worldSeed, ChunkX, ChunkZ, g, cache, data, boxCache);
+        generatePosCache(binarySeed, binaryX, binaryZ, data);
+        if(goodStarts.size() > 0) {
+            for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
+                int64_t worldSeed = (upperBits << 48) | binarySeed;
+                applySeed(&g, worldSeed);
+                doSeed(worldSeed, binaryX, binaryZ, g, cache, data, boxCache);
+            }
         }
+        goodStarts.clear();
 
         if(i % 5 || boinc_time_to_checkpoint()){
             #ifdef BOINC
                 boinc_begin_critical_section(); // Boinc should not interrupt this
             #endif
             // Checkpointing section below
-            boinc_delete_file("filter9000-checkpoint.txt"); // Don't touch, same func as normal fdel
+            //boinc_delete_file("filter9000-checkpoint"); // Don't touch, same func as normal fdel
 
-            FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint.txt", "wb");
+            FILE *checkpoint_data = boinc_fopen("filter9000-checkpoint", "wb");
             struct checkpoint_vars data_store;
             data_store.offset = i;
             data_store.elapsed_chkpoint = elapsed_chkpoint + elapsed;
@@ -327,6 +342,7 @@ int main(int argc, char **argv) {
     fflush(stderr);
     fflush(fp);
     fclose(fp);
+    fclose(binary);
     boinc_delete_file("filter9000-checkpoint.txt");
     #ifdef BOINC
         boinc_end_critical_section();

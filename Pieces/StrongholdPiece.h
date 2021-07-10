@@ -11,6 +11,11 @@ public:
     static bool getNextComponentNormal(Data* data, PieceInfo thisPiece, int offset1, int offset2);
     static bool getNextComponentZ(Data* data, PieceInfo thisPiece, int offset1, int offset2);
     static bool getNextComponentX(Data* data, PieceInfo thisPiece, int offset1, int offset2);
+
     static BoundingBox findIntersecting(Data* data, BoundingBox box);
+    static bool canStrongholdGoDeeper(BoundingBox box) {
+        //printf("%d\n", box.start.y);
+        return box.start.y > 10;
+    }
 };
 #endif
