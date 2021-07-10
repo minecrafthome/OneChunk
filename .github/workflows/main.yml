@@ -44,7 +44,7 @@ jobs:
         sudo apt install gcc-10-aarch64-linux-gnu
     - name: build
       run: |
-        aarch64-linux-gnu-g++-10 -O2 filter9000-boinc.cpp -o filter9000 ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/aarch64/lin -lstdc++ -static -static-libstdc++ -DBOINC -lboinc_api -lboinc -pthread
+        aarch64-linux-gnu-g++-10 -O0 filter9000-boinc.cpp -o filter9000 ./Pieces/Stronghold.cpp ./Pieces/StrongholdPiece.cpp ./cubiomes/finders.c ./cubiomes/util.c ./cubiomes/generator.c ./cubiomes/layers.c -I./include -l:libboinc_api.a -l:libboinc.a -L./include/boinc/lib/aarch64/lin -lstdc++ -static -static-libstdc++ -DBOINC -lboinc_api -lboinc -pthread
         ls -la
     - uses: actions/upload-artifact@v2
       with:
