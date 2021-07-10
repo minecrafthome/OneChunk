@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <thread>
 #include <cstdio>
-#include <unordered_map>
 
 #include "Utils/Data.h"
 #include "Utils/Random.h"
@@ -38,8 +37,8 @@ FILE *binary;
 int outCount = 0;
 time_t start;
 int64_t total;
+std::vector<std::string> arr;
 time_t elapsed_chkpoint = 0;
-std::unordered_map<int, std::tuple<int, int>> goodStarts;
 
 struct checkpoint_vars {
     unsigned long long offset;
@@ -103,10 +102,12 @@ void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int star
             break;
     }
 
-    if(!threadData->portalFound) {
+    PieceInfo lastPiece = threadData->pieces[threadData->pieceCnt - 1];
+    if(lastPiece.componentType != PORTALROOM_PIECE) {
         BoundingBox structureBox = BoundingBox::getNewBoundingBox();
-        for(int i = 0; i < threadData->pieceCnt; i++)
+        for(int i = 0; i < threadData->pieceCnt; i++) {
             structureBox.expandTo(threadData->pieces[i].box);
+        }
 
         int ySize = structureBox.getYSize() + 1;
         if(ySize < 53)
@@ -114,6 +115,19 @@ void generateAllPieces(Data* threadData, int64_t seed, int startChunkX, int star
 
         generateAllPieces(threadData, seed, startChunkX, startChunkZ);
     }
+}
+
+PieceInfo getLastPiece(Data* threadData, int64_t seed, int startChunkX, int startChunkZ) {
+    generateAllPieces(threadData, seed, startChunkX, startChunkZ);
+
+    return threadData->pieces[threadData->pieceCnt - 1];
+}
+
+Position getCenterPos(BoundingBox box) {
+    Position ret;
+    ret.x = (box.end.x + box.start.x) / 2;
+    ret.z = (box.end.z + box.start.z) / 2;
+    return ret;
 }
 
 void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* data, int* cache, BoundingBox* boxCache, int desiredX, int desiredZ)
@@ -145,68 +159,53 @@ void getStrongholdPositions(LayerStack* g, int64_t* worldSeed, int SH, Data* dat
             continue;
         }
         
-        std::unordered_map<int, std::tuple<int, int>>::iterator it;
-        it = goodStarts.find(x * 1000 + z);
-        
-        if(it != goodStarts.end()) {
-            fprintf(fp, "%lld %d %d\n", copy, std::get<0>(it->second), std::get<1>(it->second));
-            fflush(fp);
-            outCount++;
-        }
-        return;
-    }
-}
+        data->seed = copy;
+        data->StartChunkX = x;
+        data->StartChunkZ = z;
+        setInitialRng(data);
 
-void generatePosCache(int64_t binarySeed, int16_t binaryX, int16_t binaryZ, Data* data) {
-    int pos1X, pos1Z, pos2X, pos2Z;
-    for(int offsetX = -7; offsetX <= 7; offsetX++) {
-        for(int offsetZ = -7; offsetZ <= 7; offsetZ++) {
-            data->seed = binarySeed;
-            data->StartChunkX = binaryX + offsetX;
-            data->StartChunkZ = binaryZ + offsetZ;
-            setInitialRng(data);
-            
-            generateAllPieces(data, data->seed, data->StartChunkX, data->StartChunkZ);
+        PieceInfo lastPiece = getLastPiece(data, copy, x, z);
+        if(lastPiece.componentType == PORTALROOM_PIECE) {
+            int pos1X, pos1Z, pos2X, pos2Z;
 
-            if(data->portalCoordBaseMode == 0) {
-                pos1X = data->portalBox->start.x + 3;
-                pos1Z = data->portalBox->start.z + 12;
-                pos2X = data->portalBox->start.x + 7;
-                pos2Z = data->portalBox->start.z + 8;
+            if(lastPiece.coordBaseMode == 0) {
+                pos1X = lastPiece.box.start.x + 3;
+                pos1Z = lastPiece.box.start.z + 12;
+                pos2X = lastPiece.box.start.x + 7;
+                pos2Z = lastPiece.box.start.z + 8;
             }
 
-            else if(data->portalCoordBaseMode == 1) {
-                pos1X = data->portalBox->start.x + 7;
-                pos1Z = data->portalBox->start.z + 7;
-                pos2X = data->portalBox->start.x + 3;
-                pos2Z = data->portalBox->start.z + 3;
+            else if(lastPiece.coordBaseMode == 1) {
+                pos1X = lastPiece.box.start.x + 7;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 3;
+                pos2Z = lastPiece.box.start.z + 3;
             }
 
-            else if(data->portalCoordBaseMode == 2) {
-                pos1X = data->portalBox->start.x + 3;
-                pos1Z = data->portalBox->start.z + 7;
-                pos2X = data->portalBox->start.x + 7;
-                pos2Z = data->portalBox->start.z + 3;
+            else if(lastPiece.coordBaseMode == 2) {
+                pos1X = lastPiece.box.start.x + 3;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 7;
+                pos2Z = lastPiece.box.start.z + 3;
             }
 
-            else {
-                pos1X = data->portalBox->start.x + 12;
-                pos1Z = data->portalBox->start.z + 7;
-                pos2X = data->portalBox->start.x + 8;
-                pos2Z = data->portalBox->start.z + 3;
+            else if(lastPiece.coordBaseMode == 3) {
+                pos1X = lastPiece.box.start.x + 12;
+                pos1Z = lastPiece.box.start.z + 7;
+                pos2X = lastPiece.box.start.x + 8;
+                pos2Z = lastPiece.box.start.z + 3;
             }
 
-            if((pos1X - 8) >> 4 == binaryX && (pos2X - 8) >> 4 == binaryX) {
-                if((pos1Z - 8) >> 4 == binaryZ && (pos2Z - 8) >> 4 == binaryZ) {
-                    goodStarts.insert(
-                        std::pair<int, std::tuple<int,int>>(
-                            data->StartChunkX * 1000 + data->StartChunkZ,
-                            std::tuple<int,int>((pos2X + pos1X) / 2, (pos2Z + pos1Z) / 2)       
-                        )
-                    );
+            if((pos1X - 8) >> 4 == desiredX && (pos2X - 8) >> 4 == desiredX) {
+                if((pos1Z - 8) >> 4 == desiredZ && (pos2Z - 8) >> 4 == desiredZ) {
+                    Position center = getCenterPos(lastPiece.box);
+                    fprintf(fp, "%lld %d %d\n", copy, center.x, center.z);
+                    fflush(fp);
+                    outCount++;
                 }
             }
         }
+        angle += 2 * PI / 3.0;
     }
 }
 
@@ -263,6 +262,10 @@ int main(int argc, char **argv) {
     boinc_get_init_data(aid);
     #endif
 
+
+
+
+    //total = arr.size();
     start = time(NULL);
 
     int64_t structureSeed;
@@ -296,15 +299,11 @@ int main(int argc, char **argv) {
         binaryZ = (uint8_t)(((*binarySeedPtr)) & 0x0FF) - 127; 
         binarySeed = (*binarySeedPtr >> 16) & 0x0FFFFFFFFFFFF;
 
-        generatePosCache(binarySeed, binaryX, binaryZ, data);
-        if(goodStarts.size() > 0) {
-            for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
-                int64_t worldSeed = (upperBits << 48) | binarySeed;
-                applySeed(&g, worldSeed);
-                doSeed(worldSeed, binaryX, binaryZ, g, cache, data, boxCache);
-            }
+        for (int64_t upperBits = 0; upperBits < 1L << 16; upperBits++) {
+            int64_t worldSeed = (upperBits << 48) | binarySeed;
+            applySeed(&g, worldSeed);
+            doSeed(worldSeed, binaryX, binaryZ, g, cache, data, boxCache);
         }
-        goodStarts.clear();
 
         if(i % 5 || boinc_time_to_checkpoint()){
             #ifdef BOINC
