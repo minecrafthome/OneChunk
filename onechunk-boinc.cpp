@@ -129,7 +129,7 @@ void saveCheckpoint() {
 }
 
 int main(int argc, char **argv) {
-    fp = fopen("out.txt", "w+");
+    fp = fopen("out.txt", "a");
     
     char* filename = "jf_MD5"; //Input seeds and pos go here
     for (int i = 1; i < argc; i += 2) {
